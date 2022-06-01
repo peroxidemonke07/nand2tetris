@@ -1,0 +1,44 @@
+CHIP CPU {
+    
+    IN  
+        inM[16],
+        instruction[16],
+        reset;
+   
+    OUT 
+        outM[16],
+        writeM,
+        addressM[15],
+        pc[15]; 
+    PARTS:
+        And(a=instruction[15], b=true, out=isC);   //A or C instruction
+        Not(in=isC, out=isA);
+
+        And(a=isC, b=instruction[5], out=destA);    //if instruction is C and dest part has A in it
+        Or(a=destA, b=isA, out=loadA);              //load A if instruction is A type or A is a destination
+        Mux16(a=instruction, b=ALUout, sel=destA , out=MUX1out);//set A to the ALU output if it is a dest
+        ARegister(in=MUX1out, load=loadA, out=Areg, out[0..14] = addressM); //    addressM = A[0..14]
+
+        And(a=isC, b=instruction[4], out=loadD);    //load D if it is a destination
+        DRegister(in=ALUout, load= loadD, out=Dreg);
+
+        Mux16(a=Areg, b=inM, sel=instruction[12], out=MUX2out); //select the second operand of the ALU depending on the value of a
+        //                          a
+        ALU(x=Dreg, y=MUX2out, zx=instruction[11], nx=instruction[10], zy=instruction[9], ny=instruction[8], f=instruction[7], no=instruction[6], out=ALUout,out = outM, zr=zeroflag, ng=negflag);
+        //                          c5                  c4                  c3                  c2                 c1                   c0
+
+        //write_M
+        And(a=isC, b= instruction[3], out=writeM);  //write to memory if M is a destiantion
+
+        Or(a=zeroflag, b=negflag, out=notpos);
+        Not(in=notpos, out=posflag);                //posflag == 1  if ALU output > 0
+
+        And(a= posflag, b=instruction[0], out=jumpgt);//we jump if JGT part of the instruction is 1 and ALU ouput is positive
+        And(a= zeroflag, b=instruction[1], out=jumpeq);//we jump if JEQ part of the instruction is 1 and ALU ouput is zero
+        And(a= negflag,b= instruction[2], out = jumplt);//we jump if JLT part of the instruction is 1 and ALU ouput is negative
+        Or(a=jumpgt, b=jumplt, out=temp);
+        Or(a=jumpeq,b = temp,out = JUMP);  //JUMP = jump_eq || jump_lt || jump_gt
+        And(a=JUMP, b= isC, out=loadPC);   //load pc if we jump else increase it
+        Not(in=loadPC, out=incPC);
+        PC(in=Areg, load=loadPC, inc=incPC, reset=reset, out[0..14]=pc);
+}

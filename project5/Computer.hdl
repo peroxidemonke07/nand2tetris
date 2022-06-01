@@ -1,0 +1,10 @@
+/** The Hack computer, including CPU, RAM and ROM, loaded with a program.
+When (reset==1), the computer executes the first instruction in the program;
+When (reset==0), the computer executes the next instruction in the program. */
+CHIP Computer {
+IN reset;
+PARTS:
+    ROM32K(address=pc, out=instruction);
+    CPU(inM= MmemToCPU, instruction=instruction, reset=reset, outM=MCPUtoMem, writeM=writeM, addressM=addressM, pc=pc);
+    Memory(in=MCPUtoMem, load=writeM, address=addressM, out=MmemToCPU);
+}

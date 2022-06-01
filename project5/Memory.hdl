@@ -1,0 +1,32 @@
+//Implementation of the memory segment of the hack computer
+/** Complete address space of the computer’s data memory,
+including RAM and memory mapped I/O. 
+Outputs the value of the memory location specified by address.
+If (load==1), the in value is loaded into the memory location 
+specified by address. 
+Address space rules:
+Only the upper 16K+8K+1 words of the memory are used. 
+Access to address 0 to 16383 results in accessing the RAM;
+Access to address 16384 to 24575 results in accessing
+the Screen memory map;
+Access to address 24576 results in accessing the Keyboard
+memory map.
+*/ 
+
+//RAM :   0000 0000 0000 0000 to 0011 1111 1111 1111
+//Screen: 0100 0000 0000 0000 to 0101 1111 1111 1111
+//KBD :   0110 0000 0000 0000
+CHIP Memory {
+IN address[15], in[16], load;
+OUT out[16];
+PARTS:
+    DMux4Way(in=load, sel=address[13..14], a=ram1, b=ram2, c=Scr, d=KBD);
+    
+    Or(a=ram1, b=ram2, out=ram);
+
+    RAM16K(in=in, load=ram, address=address[0..13], out=outRAM);
+    Screen(in=in, load=Scr, address=address[0..12], out=outScr);
+    Keyboard(out=outKBD);
+
+    Mux4Way16(a=outRAM, b=outRAM, c=outScr, d=outKBD, sel=address[13..14], out= out);
+}
